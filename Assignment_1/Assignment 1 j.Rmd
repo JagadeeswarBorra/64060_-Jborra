@@ -1,0 +1,53 @@
+---
+title: "FML 1"
+author: "Jagadeesh"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+#loaddataset
+stock_data <- read.csv("C:/Users/its me/OneDrive - Kent State University/Desktop/Jaggu/Stock Market Dataset.csv")
+```
+
+```{r}
+str(stock_data)
+```
+```{r}
+# Quantitative variables
+print(summary(stock_data$Natural_Gas_Price))
+print(summary(stock_data$Netflix_Price))
+
+# Categorical variable
+print(table(stock_data$Date))
+
+```
+
+```{r}
+# Log transformation of the Netflix_Price
+stock_data$Volume_log <- log(stock_data$Netflix_Price)
+
+```
+
+
+```{r}
+# Plotting Netflix_Price
+hist(stock_data$Netflix_Price, main="Price Distribution", xlab="Netflix_Price")
+```
+
+
+```{r}
+# Assuming Date is in character format, convert it to Date
+stock_data$Date <- as.Date(stock_data$Date)
+
+# Check for missing values
+print(sum(is.na(stock_data$Date)))  # Check for NAs in Date column
+
+# Plot the scatterplot
+plot(stock_data$Date, stock_data$Silver_Price, 
+     main="Scatterplot of Silver_Price vs Date", 
+     xlab="Date", ylab="Silver_Price")
+
+
+```
+
