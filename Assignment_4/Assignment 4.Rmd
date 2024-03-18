@@ -1,0 +1,210 @@
+---
+title: "Assignment 4"
+author: "Jagadeesh"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+
+
+
+```{r}
+
+DF <- read.csv("C:\\Users\\its me\\OneDrive - Kent State University\\Desktop\\Rhistory\\Pharmaceuticals.csv")
+```
+
+```{r}
+library(tidyverse)
+library(corrplot)
+library(gridExtra)
+library(GGally)
+library(cluster)
+library(factoextra)
+library(magrittr)
+library(dplyr)
+```
+
+
+```{r}
+head(DF)
+```
+# A. Use only the numerical variables (1 to 9) to cluster the 21 firms. 
+  
+Justify the various choices made in conducting the cluster analysis, such as weights for different variables, the specific clustering algorithm(s)used, the number of clusters formed, and so on.
+
+
+
+```{r}
+rownames(DF) <- DF$Name
+View(DF)
+```
+
+```{r}
+sum(is.na(DF))
+```
+There are no missing values in this dataset. 
+
+
+```{r}
+DF %>%
+  gather(attributes, value, 3:11) %>%
+  ggplot(aes(x = value)) +
+  geom_histogram(fill = 'lightblue', color = 'red') +
+  facet_wrap(~attributes, scales = 'free_x') +
+  labs(x="Values", y="Frequency") +
+  theme_bw()
+```
+
+There seems to be an outlier in the "Leverage" attribute, and another in the "PE Ratio" attribute. These outliers could potentially impact the analysis if these variables are utilized. To streamline and enhance clarity for the equities analyst aiming to comprehend the pharmaceutical industry's framework through fundamental financial measures, correlation analysis will be employed to identify which of the nine numerical variables are suitable for analysis.
+
+```{r}
+corrplot(cor(DF[, c(3:11)]), type = 'upper', method = 'number', tl.cex = 0.9)
+```
+
+The correlation between Leverage and PE Ratio seems weak, suggesting that the outliers they harbor might not significantly influence the analysis. However, there is a robust linear correlation between Net Profit Margin and ROA. Therefore, these two variables, Net Profit Margin and ROA, will be the focus of the analysis. The objective of this assignment is to apply k-Means for clustering, hence k-Means will be the chosen method for this analysis.
+
+
+```{r}
+ggplot(DF, aes(x = Net_Profit_Margin, y = ROA)) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = FALSE) +
+  theme_bw()
+```
+
+
+# a. Use only the numerical variables (1 to 9) to cluster the 21 firms. 
+
+
+```{r}
+DF2 <- DF[, -c(12, 13, 14)]
+head(DF2)
+```
+
+Non-Numerical columns are removed (Median_Recommendation, Location, and Exchange).
+
+
+
+
+
+```{r}
+str(DF2)
+```
+
+
+```{r}
+DF2 <- DF2[, -c(1,2)]
+head(DF2)
+```
+The Name and Symbol columns have been excluded to facilitate scaling of the dataset.
+
+
+
+```{r}
+summary(DF2)
+```
+
+```{r}
+DF2 <- scale(DF2)
+head(DF2)
+```
+
+
+```{r}
+DF_ROA_NPM <- DF2[, c(5,9)]
+summary(DF_ROA_NPM) # Clustering the firms based on their Net_Profit_Margin and ROA due to their strong correlation
+```
+
+
+
+
+```{r}
+distance <- get_dist(DF_ROA_NPM) # Using Net Profit Margin and ROA for analysis
+fviz_dist(distance, gradient = list(low = "yellow", mid = "white", high = "green"))
+```
+
+
+This distance graph illustrates the Euclidean distance among the data points. Darker shades of red indicate greater distances between points, while darker teal (or green) shades represent closer proximity between points. Essentially, teal (or green) points exhibit higher similarity, whereas red points display lower similarity to each other.
+
+
+```{r}
+fviz_nbclust(DF_ROA_NPM, kmeans, method = "wss") # Elbow Graph
+```
+
+
+The optimal number of clusters is 2 via the Elbow Graph method. 
+
+
+```{r}
+fviz_nbclust(DF_ROA_NPM, kmeans, method = "silhouette") # Silhouette Graph
+```
+
+
+The optimal number of clusters is 2 via the Silhouette method. 
+
+
+
+```{r}
+set.seed(234)
+
+k2 <- kmeans(DF_ROA_NPM, centers = 2, nstart = 25)
+print(k2)
+```
+```{r}
+k2$centers
+```
+```{r}
+fviz_cluster(k2, data = DF_ROA_NPM)
+```
+```{r}
+fit_data <- kmeans(DF_ROA_NPM, 2)
+aggregate(DF_ROA_NPM, by = list(fit_data$cluster), FUN = mean)
+```
+
+
+
+```{r}
+norm_data <- as.data.frame(DF_ROA_NPM, fit_data$cluster)
+rownames(norm_data) <- DF$Symbol
+norm_data
+```
+
+
+
+
+```{r}
+clusplot(norm_data, fit_data$cluster, color = TRUE, shade = TRUE, labels = 2, lines = 0, xlab = "ROA", ylab = "Net_Profit_Margin")
+```
+
+
+
+# B. Interpret the clusters with respect to the numerical variables used in forming the clusters
+
+
+Cluster 1 (BLUE) boasts an average ROA of 0.83, while Cluster 2 (RED) shows an average ROA of -0.91. 
+In essence, Cluster 1 exhibits a superior average ROA compared to Cluster 2.
+
+Cluster 1 (BLUE) demonstrates an average Net Profit Margin of 0.68, whereas Cluster 2 (RED) showcases an average Net Profit Margin of -0.75.
+This implies that Cluster 1 maintains a higher average Net Profit Margin than Cluster 2.
+
+To sum up:
+Cluster 1 (BLUE) displays higher averages in both Return on Assets (ROA) and Net Profit Margin.
+Cluster 2 (RED) presents lower averages in both Return on Assets (ROA) and Net Profit Margin.
+
+# C. Is there a pattern in the clusters with respect to the non-numerical variables (10 to 12)?
+```{r}
+dd <- cbind(DF, cluster = k2$cluster)
+head(dd)
+```
+
+
+
+# D. Provide an appropriate name for each cluster using any or all of the variables in the dataset. 
+
+Cluster 1, identified by its higher average ROA and Net Profit Margin, tends to receive "Hold" and "Moderate Buy" recommendations for stock purchases and investments. The majority of its firms are located in the US, and all are listed exclusively with the NYSE stock exchange.
+
+Cluster 2, characterized by lower average ROA and Net Profit Margin, exhibits a more balanced distribution of "Hold," "Moderate Buy," and "Moderate Sell" recommendations. Half of its firms are based in the US, while the other half are spread across Canada and Europe, with most listed on NASDAQ.
+
+Cluster 1 can be described as "Risk-Averse and Profitable," 
+
+while Cluster 2 can be labeled as "Risk-Prone and Less Profitable."
